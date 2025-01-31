@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'signup_page.dart';
+import 'user_manager.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,11 +12,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Application',
+      title: 'Authentication App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
+      debugShowCheckedModeBanner: false,
       home: const MyHomePage(title: 'Auth Application'),
     );
   }
@@ -22,85 +25,51 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
   final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class User {
-  String username;
-  String password;
-
-  User(this.username, this.password);
-}
-
 class _MyHomePageState extends State<MyHomePage> {
-  final List<User> users = [];
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  bool isLoggedIn = false; // Track whether the user is logged in
-
-  void _signUp(String username, String password) {
-    if (_isValidPassword(password) && _isValidUsername(username)) {
-      setState(() {
-        users.add(User(username, password));
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign Up Successful!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid username or password')),
-      );
-    }
-  }
-
-  bool _signIn(String username, String password) {
-    for (var user in users) {
-      if (user.username == username && user.password == password) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool _isValidPassword(String password) {
-    if (password.length < 8) return false;
-    RegExp passwordRegex = RegExp(
-        r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
-    return passwordRegex.hasMatch(password);
-  }
-
-  bool _isValidUsername(String username) {
-    for (var user in users) {
-      if (user.username == username) return false;
-    }
-    return true;
-  }
+  final UserManager userManager = UserManager();
+  bool isLoggedIn = false;
+  bool obscurePassword = true;
 
   void _handleLogin() {
-    String username = usernameController.text;
-    String password = passwordController.text;
-    if (_signIn(username, password)) {
-      setState(() {
-        isLoggedIn = true; // Set logged-in state to true
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login Successful!')),
-      );
+    String username = usernameController.text.trim();
+    String password = passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      _showSnackbar('Please enter both username and password!');
+      return;
+    }
+
+    if (userManager.users.any(
+        (user) => user.username == username && user.password == password)) {
+      setState(() => isLoggedIn = true);
+      _showSnackbar('Login Successful!', success: true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid credentials')),
-      );
+      _showSnackbar('Invalid username or password!', success: false);
     }
   }
 
   void _handleLogout() {
-    setState(() {
-      isLoggedIn = false; // Set logged-out state
-    });
+    setState(() => isLoggedIn = false);
+    usernameController.clear();
+    passwordController.clear();
+  }
+
+  void _showSnackbar(String message, {bool success = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: success ? Colors.green : Colors.red,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -118,142 +87,132 @@ class _MyHomePageState extends State<MyHomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Center(
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                isLoggedIn
-                    ? Column(
-                        children: [
-                          const Text(
-                            'You are logged in!',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green),
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: _handleLogout,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 40, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              elevation: 5,
-                            ),
-                            child: const Text(
-                              'Logout',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 18),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          const Text(
-                            'Welcome! Please Sign In or Sign Up',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 30),
-                          TextField(
-                            controller: usernameController,
-                            decoration: InputDecoration(
-                              labelText: 'Username',
-                              hintText: 'Enter your username',
-                              hintStyle: TextStyle(color: Colors.grey.shade500),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                    color: Colors.red, width: 2),
-                              ),
-                              prefixIcon:
-                                  const Icon(Icons.person, color: Colors.red),
-                              filled: true,
-                              fillColor: Colors.red.shade50,
-                            ),
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 20),
-                          TextField(
-                            controller: passwordController,
-                            obscureText: true,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              hintText: 'Enter your password',
-                              hintStyle: TextStyle(color: Colors.grey.shade500),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                    color: Colors.red, width: 2),
-                              ),
-                              prefixIcon:
-                                  const Icon(Icons.lock, color: Colors.red),
-                              filled: true,
-                              fillColor: Colors.red.shade50,
-                            ),
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 30),
-                          // Smaller button
-                          ElevatedButton(
-                            onPressed: _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent, // Corrected
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 60,
-                                  vertical: 12), // Smaller padding
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              elevation: 5,
-                            ),
-                            child: const Text(
-                              'Login',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 18),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Smaller button
-                          ElevatedButton(
-                            onPressed: () {
-                              String username = usernameController.text;
-                              String password = passwordController.text;
-                              _signUp(username, password);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green, // Corrected
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 60,
-                                  vertical: 12), // Smaller padding
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              elevation: 5,
-                            ),
-                            child: const Text(
-                              'Sign Up',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 18),
-                            ),
-                          ),
-                        ],
+            child: isLoggedIn
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'You are logged in!',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green),
                       ),
-              ],
-            ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _handleLogout,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text('Logout',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 18)),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Welcome! Please Sign In',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 30),
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: TextField(
+                          controller: usernameController,
+                          decoration: InputDecoration(
+                            labelText: 'Username',
+                            hintText: 'Enter your username',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon:
+                                const Icon(Icons.person, color: Colors.red),
+                            filled: true,
+                            fillColor: Colors.red.shade50,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: TextField(
+                          controller: passwordController,
+                          obscureText: obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            hintText: 'Enter your password',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon:
+                                const Icon(Icons.lock, color: Colors.red),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                  obscurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.red),
+                              onPressed: () {
+                                setState(
+                                    () => obscurePassword = !obscurePassword);
+                              },
+                            ),
+                            filled: true,
+                            fillColor: Colors.red.shade50,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      ElevatedButton(
+                        onPressed: _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 60, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text('Login',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 18)),
+                      ),
+                      const SizedBox(height: 20),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const SignUpPage()),
+                            );
+                          },
+                          child: const Text(
+                            "Don't have an account? Sign up now!",
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                                decoration: TextDecoration.underline),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
