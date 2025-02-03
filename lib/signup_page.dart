@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'user_manager.dart';
+import 'package:http/http.dart' as http;
+
+String backendUrl = 'http://localhost:4000';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -11,7 +14,6 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final UserManager userManager = UserManager();
   bool _passwordVisible = false;
   bool isUppercase = false;
   bool isLowercase = false;
@@ -19,7 +21,7 @@ class _SignUpPageState extends State<SignUpPage> {
   bool isSpecialChar = false;
   bool isMinLength = false;
 
-  void _signUp() {
+  void _signUp() async {
     String username = usernameController.text.trim();
     String password = passwordController.text.trim();
 
@@ -39,23 +41,34 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    if (userManager.userExists(username)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username already taken!')),
+    final url = Uri.parse(backendUrl + '/api/user/signup');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'password': password}),
       );
-      return;
+
+      final responseData = jsonDecode(response.body);
+
+      if (responseData['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign Up Successful!')),
+        );
+        usernameController.clear();
+        passwordController.clear();
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseData['message'] ?? 'Error occurred!')),
+        );
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to connect to the server')),
+      );
     }
-
-    userManager.addUser(username, password);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sign Up Successful!')),
-    );
-
-    usernameController.clear();
-    passwordController.clear();
-
-    Navigator.pop(context);
   }
 
   bool isValidPassword(String password) {
